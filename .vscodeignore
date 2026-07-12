@@ -1,0 +1,17 @@
+.vscode/**
+.vscode-test/**
+.snapshots/**
+.codacy/**
+.claude/**
+scripts/**
+out/**
+src/**
+backend/**
+node_modules/**
+.env
+.gitignore
+.vscodeignore
+esbuild.js
+tsconfig.json
+**/*.map
+**/*.ts

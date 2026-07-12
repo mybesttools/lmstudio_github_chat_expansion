@@ -1,0 +1,526 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "lmstudio-copilot-expansion",
+  "displayName": "LM Studio Copilot Expansion",
+  "description": "Run local LM Studio models inside VS Code Copilot Chat with streaming responses and tool calling.",
+  "version": "1.2.2",
+  "publisher": "my-best-tools",
+  "repository": "https://github.com/mybesttools/lmstudio_github_chat_expansion",
+  "license": "GNU GENERAL PUBLIC LICENSE Version 3",
+  "icon": "assets/Latest.png",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "lm studio",
+    "copilot",
+    "chat",
+    "language model",
+    "ai",
+    "llm"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": [
+      {
+        "id": "lmstudio-copilot-expansion",
+        "title": "LM Studio",
+        "order": 1,
+        "properties": {
+          "lmstudio-copilot-expansion.logLevel": {
+            "type": "string",
+            "enum": [
+              "verbose",
+              "info",
+              "warning",
+              "error",
+              "none"
+            ],
+            "enumDescriptions": [
+              "All messages including detailed diagnostics",
+              "State changes, model discovery, and important events",
+              "Warnings and errors only",
+              "Errors only",
+              "No Output Channel logging"
+            ],
+            "default": "verbose",
+            "order": 0,
+            "description": "Controls how much diagnostic information this extension writes to the LM Studio output channel."
+          },
+          "lmstudio-copilot-expansion.serverUrl": {
+            "type": "string",
+            "default": "http://localhost:1234",
+            "order": 1,
+            "description": "Base URL of the LM Studio API server. This can point to a local LM Studio instance, an SSH tunnel, or a remote host."
+          },
+          "lmstudio-copilot-expansion.apiKey": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "ignoreSync": true,
+            "order": 2,
+            "markdownDescription": "API key for LM Studio server authentication. Used for model discovery, model load checks, and chat requests against the configured LM Studio API server."
+          },
+          "lmstudio-copilot-expansion.autoRefreshModels": {
+            "type": "boolean",
+            "default": true,
+            "order": 3,
+            "description": "Refresh the available model list from the configured LM Studio API server when the extension starts."
+          },
+          "lmstudio-copilot-expansion.requestTimeout": {
+            "type": "number",
+            "default": 60000,
+            "order": 4,
+            "description": "Timeout in milliseconds for non-streaming LM Studio API requests such as model discovery and model load requests."
+          },
+          "lmstudio-copilot-expansion.modelIdleTtl": {
+            "type": "number",
+            "default": 0,
+            "order": 5,
+            "description": "Auto-unload a model after it has been idle for this many seconds, freeing memory when you're not actively chatting. Set to 0 to disable (models stay loaded until you eject them or LM Studio's own settings unload them)."
+          },
+          "lmstudio-copilot-expansion.autoConfigureUtilityModel": {
+            "type": "boolean",
+            "default": true,
+            "order": 6,
+            "markdownDescription": "On startup, set VS Code's `#chat.byokUtilityModelDefault#` to `mainAgent` if you haven't already configured it yourself. This makes Copilot's background utility tasks (chat titles, commit messages, intent detection, etc.) use this BYOK model, avoiding the error \"No utility model is configured for 'copilot-utility-small' while the selected main agent model is BYOK.\""
+          }
+        }
+      },
+      {
+        "id": "lmstudio-copilot-expansion.chat",
+        "title": "Chat and Tools",
+        "order": 2,
+        "properties": {
+          "lmstudio-copilot-expansion.enableTerminalTool": {
+            "type": "boolean",
+            "default": true,
+            "order": 1,
+            "description": "Allow model tool calls to execute shell commands on your machine through the terminal tool. Disable this if you do not want chat models to run commands."
+          },
+          "lmstudio-copilot-expansion.terminalToolName": {
+            "type": "string",
+            "default": "LM Studio Tool Terminal",
+            "order": 2,
+            "description": "Name of the VS Code terminal used when the terminal tool runs model-invoked commands."
+          },
+          "lmstudio-copilot-expansion.terminalToolTimeout": {
+            "type": "number",
+            "default": 30000,
+            "order": 3,
+            "description": "Timeout in milliseconds for terminal-tool commands invoked by the model."
+          },
+          "lmstudio-copilot-expansion.maxInputTokens": {
+            "type": "number",
+            "default": 131072,
+            "order": 4,
+            "description": "Fallback context window size advertised to VS Code when the LM Studio API does not report a model context length. Default is 128k."
+          },
+          "lmstudio-copilot-expansion.maxOutputTokens": {
+            "type": "number",
+            "default": 16384,
+            "order": 5,
+            "description": "Default maximum output tokens requested for chat responses. Default is 16k."
+          },
+          "lmstudio-copilot-expansion.maxTools": {
+            "type": "number",
+            "default": 20,
+            "order": 6,
+            "description": "Maximum number of tools to send to the model per request. Tools used in the current conversation are always included first; the rest are prioritized by name simplicity. Set to 0 for no limit."
+          },
+          "lmstudio-copilot-expansion.enableToolCalling": {
+            "type": "boolean",
+            "default": true,
+            "order": 7,
+            "description": "Advertise tool-calling support to VS Code and LM Studio for models that can use tools or function calls."
+          },
+          "lmstudio-copilot-expansion.injectSystemPrompt": {
+            "type": "boolean",
+            "default": true,
+            "order": 8,
+            "description": "Inject a minimal coding-assistant system prompt before each request. Disable this if your LM Studio-side prompt template already provides the behavior you want."
+          },
+          "lmstudio-copilot-expansion.enableThinking": {
+            "type": "boolean",
+            "default": true,
+            "order": 9,
+            "description": "Allow models that support it to use their extended thinking mode. Disable this to force `enable_thinking=false` on requests."
+          },
+          "lmstudio-copilot-expansion.reasoningEffort": {
+            "type": "string",
+            "enum": [
+              "default",
+              "low",
+              "medium",
+              "high"
+            ],
+            "enumDescriptions": [
+              "Do not send a reasoning_effort parameter — the model uses its built-in default.",
+              "Minimal reasoning trace. Faster responses, lower token usage.",
+              "Balanced reasoning. Good for most tasks.",
+              "Maximum reasoning depth. Best for complex problems, uses more tokens."
+            ],
+            "default": "default",
+            "order": 10,
+            "description": "Reasoning effort level sent to models that support the `reasoning_effort` parameter. Has no effect on models that ignore that parameter."
+          },
+          "lmstudio-copilot-expansion.enableModelAdvisories": {
+            "type": "boolean",
+            "default": true,
+            "order": 11,
+            "description": "Show request-time advisories when the selected model looks like a poor fit for the task, such as a very small model on a large tool-heavy request or a very large model on a trivial task."
+          },
+          "lmstudio-copilot-expansion.enableAutoModel": {
+            "type": "boolean",
+            "default": true,
+            "order": 12,
+            "markdownDescription": "Add an \"LM Studio Auto\" entry to the model picker. When selected, the extension classifies each new conversation's first request against the same task profiles used by `#lmstudio-copilot-expansion.taskTypeModels#` (asking a loaded model to pick, falling back to a heuristic) and routes to the best-fitting model, sticking with that pick for the rest of the conversation."
+          },
+          "lmstudio-copilot-expansion.taskTypeModels": {
+            "type": "object",
+            "default": {},
+            "order": 13,
+            "markdownDescription": "Optional per-task model profiles. When configured, the extension adds profile entries to the model picker and uses them for advisory recommendations. Set each value to an LM Studio model ID. Supported keys: `quick`, `coding`, `planning`, `toolUse`, `vision`, `review`.",
+            "properties": {
+              "quick": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for quick edits, short answers, and low-complexity requests."
+              },
+              "coding": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for general coding tasks."
+              },
+              "planning": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for long-context reasoning, architecture work, and synthesis tasks."
+              },
+              "toolUse": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for requests that expose many tools or rely heavily on tool calling."
+              },
+              "vision": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for image-input or vision tasks."
+              },
+              "review": {
+                "type": "string",
+                "default": "",
+                "description": "Model ID to use for code review, summarization, or final pass validation tasks."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "lmstudio-copilot-expansion.refreshModels",
+        "title": "LM Studio: Refresh Available Models"
+      },
+      {
+        "command": "lmstudio-copilot-expansion.reviewSuggestedModelConfig",
+        "title": "LM Studio: Review Suggested Model Config"
+      },
+      {
+        "command": "lmstudio-copilot-expansion.checkConnection",
+        "title": "LM Studio: Check Server Connection"
+      }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "lmstudio-mbt",
+        "displayName": "LM Studio"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "mbt_lmstudio_run_in_terminal",
+        "toolReferenceName": "runInTerminal",
+        "displayName": "Run In Terminal",
+        "modelDescription": "Executes a shell command in VS Code integrated terminal and returns its full stdout, stderr, and exit code. Use for build, test, install, lint, and diagnostics commands.",
+        "userDescription": "Runs a shell command and returns the output to the model.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "terminal",
+          "shell",
+          "command"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Shell command to execute"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory (absolute or workspace-relative). Defaults to workspace root."
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      },
+      {
+        "name": "mbt_lmstudio_read_file",
+        "toolReferenceName": "readFile",
+        "displayName": "Read File",
+        "modelDescription": "Reads the contents of a file from disk and returns them with line numbers. Accepts workspace-relative or absolute paths. Optionally specify a line range.",
+        "userDescription": "Reads a file and returns its contents to the model.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "file",
+          "read",
+          "filesystem"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path (absolute or workspace-relative)"
+            },
+            "startLine": {
+              "type": "number",
+              "description": "First line to read (1-based, inclusive). Omit for beginning of file."
+            },
+            "endLine": {
+              "type": "number",
+              "description": "Last line to read (1-based, inclusive). Omit for end of file."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "mbt_lmstudio_write_file",
+        "toolReferenceName": "writeFile",
+        "displayName": "Write File",
+        "modelDescription": "Writes or overwrites a file on disk with the provided content. Creates parent directories if needed. Use when you want to create or modify a file.",
+        "userDescription": "Writes content to a file on disk.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "file",
+          "write",
+          "filesystem",
+          "edit"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path (absolute or workspace-relative)"
+            },
+            "content": {
+              "type": "string",
+              "description": "Full content to write to the file"
+            },
+            "createDirectories": {
+              "type": "boolean",
+              "description": "Create parent directories if they don't exist. Defaults to true."
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "mbt_lmstudio_list_directory",
+        "toolReferenceName": "listDirectory",
+        "displayName": "List Directory",
+        "modelDescription": "Lists the contents of a directory. Returns files and folders with icons. Can recurse into subdirectories up to a configurable depth. Skips node_modules, .git, dist etc.",
+        "userDescription": "Lists files and folders in a directory.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "file",
+          "directory",
+          "filesystem",
+          "ls"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory path (absolute or workspace-relative). Defaults to workspace root."
+            },
+            "recursive": {
+              "type": "boolean",
+              "description": "Recurse into subdirectories. Defaults to false."
+            },
+            "maxDepth": {
+              "type": "number",
+              "description": "Maximum recursion depth when recursive is true. Defaults to 4."
+            }
+          }
+        }
+      },
+      {
+        "name": "mbt_lmstudio_search_files",
+        "toolReferenceName": "searchFiles",
+        "displayName": "Search Files",
+        "modelDescription": "Searches for a text pattern or regex across all files in the workspace. Returns matching lines with file path, line number, and surrounding context. Uses ripgrep when available for speed.",
+        "userDescription": "Searches for text or patterns across workspace files.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "search",
+          "grep",
+          "filesystem",
+          "find"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Text or regex pattern to search for"
+            },
+            "glob": {
+              "type": "string",
+              "description": "Glob pattern to restrict which files are searched (e.g. '**/*.ts')"
+            },
+            "isRegex": {
+              "type": "boolean",
+              "description": "Treat pattern as a regular expression. Defaults to false."
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Case-sensitive matching. Defaults to false."
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of matches to return. Defaults to 50."
+            },
+            "contextLines": {
+              "type": "number",
+              "description": "Number of context lines to show around each match. Defaults to 2."
+            }
+          },
+          "required": [
+            "pattern"
+          ]
+        }
+      },
+      {
+        "name": "mbt_lmstudio_get_codebase_index",
+        "toolReferenceName": "getCodebaseIndex",
+        "displayName": "Get Codebase Index",
+        "modelDescription": "Walks the entire workspace and returns a structured index of all source files with their paths, sizes, and exported/declared symbols (functions, classes, constants, etc.). Use this to understand the overall codebase layout before reading individual files, or when the user asks about the project structure.",
+        "userDescription": "Builds a structural index of the workspace, listing every file and its top-level declarations.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "codebase",
+          "index",
+          "symbols",
+          "workspace",
+          "structure"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "includeSymbols": {
+              "type": "boolean",
+              "description": "Extract top-level symbol names (exported functions, classes, constants, etc.) from each code file. Defaults to true."
+            },
+            "maxFileSizeKB": {
+              "type": "number",
+              "description": "Maximum file size in KB to process for symbol extraction. Files larger than this limit are still listed but their symbols are not extracted. Defaults to 128, capped at 512."
+            }
+          }
+        }
+      },
+      {
+        "name": "mbt_lmstudio_switch_model",
+        "toolReferenceName": "switchModel",
+        "displayName": "Switch LM Studio Model",
+        "modelDescription": "Only usable when the selected chat model is \"LM Studio Auto\": hands the rest of this conversation off to a different, better-fitting local model. Call this if the current model is clearly a poor fit for what you're about to do next — for example you need a much larger context window or deeper reasoning (planning), heavier tool-calling (toolUse), image understanding (vision), a fast/cheap model for a trivial follow-up (quick), general code work (coding), or a final review/summarization pass (review). The switch takes effect starting with the next response and persists for the rest of the conversation until you (or the user) switch again.",
+        "userDescription": "Lets the active LM Studio Auto model hand off the rest of the conversation to a better-fitting model.",
+        "canBeReferencedInPrompt": true,
+        "tags": [
+          "model",
+          "routing",
+          "auto"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "profile": {
+              "type": "string",
+              "enum": [
+                "quick",
+                "coding",
+                "planning",
+                "toolUse",
+                "vision",
+                "review"
+              ],
+              "enumDescriptions": [
+                "Quick edits, short answers, and low-complexity requests.",
+                "General coding tasks.",
+                "Long-context reasoning, architecture work, and synthesis tasks.",
+                "Requests that expose many tools or rely heavily on tool calling.",
+                "Image-input or vision tasks.",
+                "Code review, summarization, or final-pass validation tasks."
+              ],
+              "description": "The task profile that best fits what you're about to do next."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Short explanation of why this switch is needed. Shown in the extension's log, not to the user."
+            }
+          },
+          "required": [
+            "profile"
+          ]
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && node esbuild.js && npm run build:backend",
+    "check-types": "tsc --noEmit",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "build:backend": "dotnet publish backend -c Release -o dist/backend --self-contained false",
+    "package": "npm run check-types && node esbuild.js --production && npm run build:backend",
+    "package:vsix": "vsce package --allow-missing-repository",
+    "publish:vsce": "vsce publish --allow-missing-repository",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "npm run compile && node ./scripts/test-smoke.js",
+    "test:integration": "npm run compile && node ./scripts/run-vscode-tests.js",
+    "test:live": "npm run compile && LMSTUDIO_LIVE_SMOKE=1 LMSTUDIO_USE_CURRENT_VSCODE_PROFILE=1 node ./scripts/run-vscode-tests.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.104.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.56.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.3.0"
+  }
+}
