@@ -13,5 +13,6 @@ node_modules/**
 .vscodeignore
 esbuild.js
 tsconfig.json
+publish.sh
 **/*.map
 **/*.ts
