@@ -1,10 +1,22 @@
 # Changelog
 
+## [1.2.4] - 2026-07-12
+
+### Fixed
+
+Removed references to the Marketplace PAT leak from the changelog.
+
+## [1.2.3] - 2026-07-12
+
+### Fixed
+
+.vscodeignore did not exclude the local publish.sh helper script, so vsce was bundling it straight into the packaged .vsix. publish.sh is now excluded from the package.
+
 ## [1.2.2] - 2026-07-12
 
 ### Fixed
 
-The manual provider JSON fallback example in the README was missing the top-level array wrapper the `customendpoint` provider actually requires — pasted as-is it would fail to load. The License section said MIT while `LICENSE`/`package.json` say GPL-3.0; the switch-model tool was referenced by its display name instead of its registered tool name (`mbt_lmstudio_switch_model`); and the Commands list was missing `LM Studio: Review Suggested Model Config`.
+The manual provider JSON fallback example in the README was missing the top-level array wrapper the customendpoint provider actually requires — pasted as-is it would fail to load. The License section said MIT while LICENSE/package.json say GPL-3.0; the switch-model tool was referenced by its display name instead of its registered tool name (mbt_lmstudio_switch_model); and the Commands list was missing LM Studio: Review Suggested Model Config.
 
 ## [1.2.1] - 2026-07-12
 
