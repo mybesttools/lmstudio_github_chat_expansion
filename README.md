@@ -81,6 +81,7 @@ Most users can leave the defaults alone. These are the settings that matter most
 - `lmstudio-copilot-expansion.enableToolCalling`: Enable tool calling for supported models
 - `lmstudio-copilot-expansion.maxTools`: Limit the number of tools exposed per request
 - `lmstudio-copilot-expansion.logLevel`: Controls output logging verbosity. Default is `verbose`; set to `info`, `warning`, `error`, or `none`.
+- `lmstudio-copilot-expansion.homeSubnets`: CIDR ranges (e.g. `192.168.1.0/24`) that count as your "home" network. When set, the extension checks this machine's current IP addresses against these ranges on startup and skips activation entirely if none match, so it doesn't try to reach your LM Studio server when you're away from its network. Ignored when `serverUrl` points at `localhost`/`127.0.0.1`/`::1`, since a loopback server is reachable regardless of network. Leave empty (default) to always activate.
 
 ## Commands
 

@@ -5,6 +5,7 @@ import { BackendProcess } from './backend-process';
 import { Logger } from './logger';
 import { registerAllTools } from './tools/index';
 import { BackendConfig } from './types';
+import { getLocalNetworkAddresses, isLocalhostUrl, isOnHomeNetwork } from './network';
 import {
   COMMAND_CHECK_CONNECTION,
   COMMAND_REFRESH_MODELS,
@@ -140,6 +141,16 @@ export async function activate(context: vscode.ExtensionContext) {
   logger.info(`LM Studio Copilot Provider is activating... v${context.extension.packageJSON.version}`);
   if (logger.shouldShow) {
     outputChannel.show(true);
+  }
+
+  const homeSubnets = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string[]>('homeSubnets', []);
+  const serverUrl = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('serverUrl', 'http://localhost:1234');
+  if (!isLocalhostUrl(serverUrl) && !isOnHomeNetwork(homeSubnets)) {
+    logger.info(
+      `Not on a configured home subnet (${homeSubnets.join(', ')}); this machine's addresses are ` +
+      `[${getLocalNetworkAddresses().join(', ')}]. Skipping activation.`
+    );
+    return;
   }
 
   if (vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>('autoConfigureUtilityModel', true)) {

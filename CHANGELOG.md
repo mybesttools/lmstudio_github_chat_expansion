@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0] - 2026-07-16
+
+### Added
+
+New `homeSubnets` setting: a list of CIDR ranges (e.g. `192.168.1.0/24`) that count as your "home" network. When set, the extension checks this machine's current IP addresses against these ranges on startup and skips activation entirely — no backend process, no provider registration — if none match, so it doesn't try to reach your LM Studio server when you're away from its network (e.g. at work or on public Wi-Fi). The check is skipped whenever `serverUrl` points at `localhost`/`127.0.0.1`/`::1`, since a loopback server is reachable regardless of network. Leave `homeSubnets` empty (the default) to always activate.
+
 ## [1.2.4] - 2026-07-12
 
 ### Fixed
