@@ -81,6 +81,13 @@ public sealed class ChatOrchestrator
     public async Task RefreshModelsAsync()
     {
         Log("Refreshing models...");
+        if (!await _client.CheckConnectionAsync())
+        {
+            Warn($"Cannot reach the LM Studio server at {_getConfig().ServerUrl}; skipping model refresh.");
+            _availableModels = new();
+            return;
+        }
+
         var liveModels = await _client.GetModelsAsync();
 
         _availableModels = liveModels
@@ -489,6 +496,11 @@ public sealed class ChatOrchestrator
     public async Task<TaskTypeModelConfigSuggestion?> GetTaskTypeModelConfigSuggestionAsync()
     {
         if (_availableModels.Count == 0) return null;
+        if (!await _client.CheckConnectionAsync())
+        {
+            Warn($"Cannot reach the LM Studio server at {_getConfig().ServerUrl}; skipping task-profile config suggestion.");
+            return null;
+        }
 
         var heuristicPicks = new Dictionary<string, string>();
         foreach (var key in TaskProfileKeys)
@@ -836,6 +848,10 @@ public sealed class ChatOrchestrator
         string? autoNote = null;
         if (selected.Id == AutoModelId)
         {
+            if (!await _client.CheckConnectionAsync())
+            {
+                throw new Exception($"Cannot reach the LM Studio server at {_getConfig().ServerUrl}; LM Studio Auto cannot classify or route this request. Make sure LM Studio is running.");
+            }
             (modelId, autoNote) = await ResolveAutoModelIdAsync(request.Messages, availableTools, ct);
         }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] - 2026-07-31
+
+### Fixed
+
+The extension no longer tries to evaluate models when the configured LM Studio server can't be reached. Model list refresh (on activation, config changes, and the manual "Refresh Models" command), the task-profile config advisor, and "LM Studio Auto" per-request classification/routing now all check the connection first and skip/fail fast with a clear message instead of attempting a doomed network call.
+
 ## [1.3.0] - 2026-07-16
 
 ### Added
