@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.2] - 2026-07-31
+
+### Fixed
+
+The 1.3.1 connection check didn't cover every path: the model advertiser's "unknown task-profile model" warning and the startup config-advisor's "no longer on the server" check both still ran against an empty model list while the server was unreachable, misreporting every configured task-profile model as removed/unknown instead of just unreachable. Both now stay silent when there's no model list to check against.
+
 ## [1.3.1] - 2026-07-31
 
 ### Fixed

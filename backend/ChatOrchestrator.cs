@@ -170,7 +170,10 @@ public sealed class ChatOrchestrator
             var backing = GetModelById(modelId);
             if (backing == null)
             {
-                Warn($"Task profile {key} points to an unknown model: {modelId}");
+                if (_availableModels.Count > 0)
+                {
+                    Warn($"Task profile {key} points to an unknown model: {modelId}");
+                }
                 continue;
             }
             profileModels.Add(ToAdvertisedModel(
@@ -487,6 +490,8 @@ public sealed class ChatOrchestrator
     /// <summary>Lightweight check (no advisor call, no scoring) for whether any configured task-profile model id no longer resolves against the connected server's model catalog.</summary>
     public List<MissingTaskTypeModel> GetMissingTaskTypeModels()
     {
+        if (_availableModels.Count == 0) return new();
+
         return GetConfiguredTaskTypeModels()
             .Where(kv => IsModelMissing(kv.Value))
             .Select(kv => new MissingTaskTypeModel { Key = kv.Key, Label = TaskProfileLabels[kv.Key], ModelId = kv.Value })
